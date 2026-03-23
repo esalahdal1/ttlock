@@ -5,8 +5,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "vite",
-    "build": "vite build"
+    "start": "node server.js",
+    "dev": "vite",
+    "build": "vite build",
+    "serve": "node server.js"
   },
   "keywords": [],
   "author": "",

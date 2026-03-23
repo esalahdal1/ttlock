@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const axios = require('axios');
+const path = require('path');
 const app = express();
 const port = process.env.PORT || 3001;
 
@@ -8,6 +9,9 @@ const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
 
 app.use(express.json());
+
+// Serve static files from the React app
+app.use(express.static(path.join(__dirname, 'dist')));
 
 app.post('/api/ttlock/token', async (req, res) => {
     const { code, redirectUri } = req.body;
@@ -22,7 +26,8 @@ app.post('/api/ttlock/token', async (req, res) => {
         params.append('client_secret', CLIENT_SECRET);
         params.append('grant_type', 'authorization_code');
         params.append('code', code);
-        params.append('redirect_uri', redirectUri || 'http://localhost:3000/auth/ttlock/callback');
+        // Use the redirectUri from the request, fallback to a default if not provided
+        params.append('redirect_uri', redirectUri);
 
         const response = await axios.post('https://euopen.ttlock.com/oauth2/token', params, {
             headers: {
@@ -334,6 +339,12 @@ app.post('/api/ttlock/ekey/delete', async (req, res) => {
         console.error('Error deleting ekey:', error.response ? error.response.data : error.message);
         res.status(500).json({ error: 'Failed to delete ekey' });
     }
+});
+
+// The "catchall" handler: for any request that doesn't
+// match one above, send back React's index.html file.
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
 app.listen(port, () => {
