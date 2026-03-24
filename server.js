@@ -20,8 +20,13 @@ app.post('/api/ttlock/token-direct', async (req, res) => {
         return res.status(400).json({ error: 'Username and password are required' });
     }
 
+    // Diagnostic check for Environment Variables
+    if (!CLIENT_ID || !CLIENT_SECRET) {
+        console.error('CRITICAL ERROR: CLIENT_ID or CLIENT_SECRET is missing in environment variables!');
+        return res.status(500).json({ error: 'Server configuration error: Missing API credentials in Render settings.' });
+    }
+
     try {
-        // TTLock requires MD5 password in lowercase
         const md5Password = crypto.createHash('md5').update(password).digest('hex');
 
         const params = new URLSearchParams();
@@ -29,24 +34,41 @@ app.post('/api/ttlock/token-direct', async (req, res) => {
         params.append('client_secret', CLIENT_SECRET);
         params.append('username', username);
         params.append('password', md5Password);
-        params.append('date', Date.now()); // Added date parameter as it's often required
+        params.append('date', Date.now());
 
+        console.log(`Attempting TTLock login for user: ${username} using client: ${CLIENT_ID}`);
+
+        // We try the European endpoint first, as per user's requirement
         const response = await axios.post('https://euopen.ttlock.com/oauth2/token', params, {
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            }
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            timeout: 10000 // 10 seconds timeout
         });
 
-        // If TTLock returns an error in the body even with 200 OK
+        console.log('TTLock Response Status:', response.status);
+        console.log('TTLock Response Data:', JSON.stringify(response.data));
+
         if (response.data.errcode && response.data.errcode !== 0) {
-            return res.status(400).json({ error: response.data.description || response.data.errmsg });
+            return res.status(400).json({ 
+                error: `TTLock Error (${response.data.errcode}): ${response.data.description || response.data.errmsg}` 
+            });
+        }
+
+        if (!response.data.access_token) {
+            return res.status(400).json({ error: 'TTLock did not return an access token. Please check your credentials.' });
         }
 
         res.json(response.data);
     } catch (error) {
-        console.error('Error getting access token direct:', error.response ? error.response.data : error.message);
-        const errorMessage = error.response?.data?.description || error.response?.data?.errmsg || 'Failed to connect to TTLock. Please check your credentials and try again.';
-        res.status(500).json({ error: errorMessage });
+        console.error('Detailed Connection Error:', error.message);
+        if (error.response) {
+            console.error('Error Response Data:', error.response.data);
+            const msg = error.response.data.description || error.response.data.errmsg || error.message;
+            res.status(error.response.status || 500).json({ error: `TTLock Server Error: ${msg}` });
+        } else if (error.request) {
+            res.status(504).json({ error: 'TTLock server did not respond. Please try again in a moment.' });
+        } else {
+            res.status(500).json({ error: `Request Error: ${error.message}` });
+        }
     }
 });
 
