@@ -7,11 +7,15 @@ const port = process.env.PORT || 3001;
 
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
+const FIXED_USERNAME = process.env.TTLOCK_USERNAME;
+const FIXED_PASSWORD = process.env.TTLOCK_PASSWORD;
 
-console.log('--- Server Config ---');
+console.log('--- Server Config Version 2.0 ---');
+console.log('Using API Endpoint: api.ttlock.com');
 console.log('PORT:', port);
 console.log('CLIENT_ID loaded:', CLIENT_ID ? 'Yes' : 'No');
 console.log('CLIENT_SECRET loaded:', CLIENT_SECRET ? 'Yes' : 'No');
+console.log('FIXED_CREDENTIALS loaded:', (FIXED_USERNAME && FIXED_PASSWORD) ? 'Yes' : 'No');
 console.log('---------------------');
 
 app.use(express.json());
@@ -21,11 +25,14 @@ const crypto = require('crypto');
 
 app.post('/api/ttlock/token-direct', async (req, res) => {
     console.log('--- Incoming Login Request ---');
-    const { username, password } = req.body;
-    console.log('Username:', username);
+    // Use provided credentials or fallback to fixed ones
+    const username = req.body.username || FIXED_USERNAME;
+    const password = req.body.password || FIXED_PASSWORD;
+    
+    console.log('Username used:', username);
 
     if (!username || !password) {
-        console.warn('Missing username or password');
+        console.warn('Missing username or password (no fixed credentials found either)');
         return res.status(400).json({ error: 'Username and password are required' });
     }
 
