@@ -34,7 +34,10 @@ function Dashboard({ user, accessToken, onAuthentication }) {
             .then(response => {
                 let filteredLocks = response.data.list || [];
                 if (user.role === 'guest') {
-                    filteredLocks = filteredLocks.filter(lock => lock.lockName === '102');
+                    // Filter by alias or name for guest
+                    filteredLocks = filteredLocks.filter(lock => 
+                        lock.lockAlias === '102' || lock.lockName === '102'
+                    );
                 }
                 setLocks(filteredLocks);
             })
@@ -80,7 +83,9 @@ function Dashboard({ user, accessToken, onAuthentication }) {
                     <TableBody>
                         {locks.map(lock => (
                             <TableRow key={lock.lockId}>
-                                <TableCell component="th" scope="row">{lock.lockName}</TableCell>
+                                <TableCell component="th" scope="row">
+                                    {lock.lockAlias || lock.lockName}
+                                </TableCell>
                                 <TableCell>{lock.lockId}</TableCell>
                                 <TableCell>{lock.electricQuantity}%</TableCell>
                                 <TableCell>
