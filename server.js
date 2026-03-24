@@ -29,6 +29,7 @@ app.post('/api/ttlock/token-direct', async (req, res) => {
         params.append('client_secret', CLIENT_SECRET);
         params.append('username', username);
         params.append('password', md5Password);
+        params.append('date', Date.now()); // Added date parameter as it's often required
 
         const response = await axios.post('https://euopen.ttlock.com/oauth2/token', params, {
             headers: {
@@ -36,10 +37,16 @@ app.post('/api/ttlock/token-direct', async (req, res) => {
             }
         });
 
+        // If TTLock returns an error in the body even with 200 OK
+        if (response.data.errcode && response.data.errcode !== 0) {
+            return res.status(400).json({ error: response.data.description || response.data.errmsg });
+        }
+
         res.json(response.data);
     } catch (error) {
         console.error('Error getting access token direct:', error.response ? error.response.data : error.message);
-        res.status(500).json({ error: 'Failed to connect to TTLock. Check your credentials.' });
+        const errorMessage = error.response?.data?.description || error.response?.data?.errmsg || 'Failed to connect to TTLock. Please check your credentials and try again.';
+        res.status(500).json({ error: errorMessage });
     }
 });
 
