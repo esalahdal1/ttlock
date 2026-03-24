@@ -1,17 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
-import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, Typography, Box } from '@mui/material';
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, Typography, Box, TextField, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 
-function Dashboard({ user, accessToken }) {
+function Dashboard({ user, accessToken, onAuthentication }) {
     const [locks, setLocks] = useState([]);
     const [error, setError] = useState(null);
+    const [openLogin, setOpenLogin] = useState(false);
+    const [ttlockUser, setTtlockUser] = useState('');
+    const [ttlockPass, setTtlockPass] = useState('');
 
-    const handleConnect = () => {
-        const clientId = '9b89ac680b7f4a3990c721a27f5941d8'; // This is public anyway, but good to be consistent
-        const redirectUri = encodeURIComponent(`${window.location.origin}/auth/ttlock/callback`);
-        const authUrl = `https://open.ttlock.com/oauth2/authorize?client_id=${clientId}&response_type=code&redirect_uri=${redirectUri}`;
-        window.location.href = authUrl;
+    const handleConnectDirect = () => {
+        axios.post('/api/ttlock/token-direct', { username: ttlockUser, password: ttlockPass })
+            .then(response => {
+                onAuthentication(response.data.access_token);
+                setOpenLogin(false);
+            })
+            .catch(err => {
+                console.error('Error connecting to TTLock:', err);
+                setError('Failed to connect. Please check your TTLock username and password.');
+            });
     };
 
     useEffect(() => {
@@ -36,7 +44,20 @@ function Dashboard({ user, accessToken }) {
             <Box sx={{ textAlign: 'center', mt: 5 }}>
                 <Typography variant="h5">Admin Dashboard</Typography>
                 <Typography sx={{ mb: 2 }}>Please connect your TTlock account to manage locks.</Typography>
-                <Button variant="contained" onClick={handleConnect}>Connect to TTlock</Button>
+                <Button variant="contained" onClick={() => setOpenLogin(true)}>Connect to TTlock</Button>
+
+                <Dialog open={openLogin} onClose={() => setOpenLogin(false)}>
+                    <DialogTitle>Login to TTLock</DialogTitle>
+                    <DialogContent>
+                        <Typography variant="body2" sx={{ mb: 2 }}>Enter your TTLock App credentials (Phone or Email).</Typography>
+                        <TextField autoFocus margin="dense" label="Username (Phone/Email)" type="text" fullWidth variant="outlined" value={ttlockUser} onChange={(e) => setTtlockUser(e.target.value)} />
+                        <TextField margin="dense" label="Password" type="password" fullWidth variant="outlined" value={ttlockPass} onChange={(e) => setTtlockPass(e.target.value)} />
+                    </DialogContent>
+                    <DialogActions>
+                        <Button onClick={() => setOpenLogin(false)}>Cancel</Button>
+                        <Button onClick={handleConnectDirect} variant="contained">Login</Button>
+                    </DialogActions>
+                </Dialog>
             </Box>
         );
     }

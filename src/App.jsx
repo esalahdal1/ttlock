@@ -27,7 +27,7 @@ function App() {
         <Router>
             <Routes>
                 <Route path="/login" element={!user ? <LoginPage onLogin={handleLocalLogin} /> : <Navigate to="/dashboard" />} />
-                <Route path="/dashboard" element={user ? <Dashboard user={user} accessToken={accessToken} /> : <Navigate to="/login" />} />
+                <Route path="/dashboard" element={user ? <Dashboard user={user} accessToken={accessToken} onAuthentication={handleAuthentication} /> : <Navigate to="/login" />} />
                 <Route path="/lock/:lockId" element={user ? <LockDetails user={user} accessToken={accessToken} /> : <Navigate to="/login" />} />
                 <Route path="/auth/ttlock/callback" element={<AuthCallback onAuthentication={handleAuthentication} />} />
                 <Route path="*" element={<Navigate to="/login" />} />

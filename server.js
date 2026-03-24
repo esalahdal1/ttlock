@@ -11,21 +11,24 @@ const CLIENT_SECRET = process.env.CLIENT_SECRET;
 app.use(express.json());
 
 // API Routes
-app.post('/api/ttlock/token', async (req, res) => {
-    const { code, redirectUri } = req.body;
+const crypto = require('crypto');
 
-    if (!code) {
-        return res.status(400).json({ error: 'Authorization code is missing' });
+app.post('/api/ttlock/token-direct', async (req, res) => {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+        return res.status(400).json({ error: 'Username and password are required' });
     }
 
     try {
+        // TTLock requires MD5 password in lowercase
+        const md5Password = crypto.createHash('md5').update(password).digest('hex');
+
         const params = new URLSearchParams();
         params.append('client_id', CLIENT_ID);
         params.append('client_secret', CLIENT_SECRET);
-        params.append('grant_type', 'authorization_code');
-        params.append('code', code);
-        // Use the redirectUri from the request, fallback to a default if not provided
-        params.append('redirect_uri', redirectUri);
+        params.append('username', username);
+        params.append('password', md5Password);
 
         const response = await axios.post('https://euopen.ttlock.com/oauth2/token', params, {
             headers: {
@@ -35,8 +38,8 @@ app.post('/api/ttlock/token', async (req, res) => {
 
         res.json(response.data);
     } catch (error) {
-        console.error('Error getting access token:', error.response ? error.response.data : error.message);
-        res.status(500).json({ error: 'Failed to get access token' });
+        console.error('Error getting access token direct:', error.response ? error.response.data : error.message);
+        res.status(500).json({ error: 'Failed to connect to TTLock. Check your credentials.' });
     }
 });
 
