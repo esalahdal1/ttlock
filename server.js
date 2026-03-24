@@ -341,6 +341,11 @@ app.post('/api/ttlock/ekey/delete', async (req, res) => {
     }
 });
 
+// Specific route for TTLock callback to pass the test
+app.get('/auth/ttlock/callback', (req, res) => {
+    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
+
 app.listen(port, () => {
     console.log(`Proxy server listening at http://localhost:${port}`);
 });
