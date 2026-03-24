@@ -39,6 +39,14 @@ function Dashboard({ user, accessToken, onAuthentication }) {
                         lock.lockAlias === '102' || lock.lockName === '102'
                     );
                 }
+
+                // Sort locks numerically by alias/name
+                filteredLocks.sort((a, b) => {
+                    const nameA = a.lockAlias || a.lockName || '';
+                    const nameB = b.lockAlias || b.lockName || '';
+                    return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
+                });
+
                 setLocks(filteredLocks);
             })
             .catch(err => {
@@ -65,39 +73,60 @@ function Dashboard({ user, accessToken, onAuthentication }) {
         );
     }
 
+    // Group locks by floor
+    const groupedLocks = locks.reduce((acc, lock) => {
+        const name = lock.lockAlias || lock.lockName || '';
+        const floorMatch = name.match(/^(\d)/);
+        const floor = floorMatch ? `Floor ${floorMatch[1]}` : 'Other';
+        if (!acc[floor]) acc[floor] = [];
+        acc[floor].push(lock);
+        return acc;
+    }, {});
+
     return (
         <div>
             <Typography variant="h4" gutterBottom>{user.role.charAt(0).toUpperCase() + user.role.slice(1)} Dashboard</Typography>
             {error && <Typography color="error">{error}</Typography>}
-            <Typography variant="h5" gutterBottom>Your Locks:</Typography>
-            <TableContainer component={Paper}>
-                <Table sx={{ minWidth: 650 }} aria-label="simple table">
-                    <TableHead>
-                        <TableRow>
-                            <TableCell>Lock Name</TableCell>
-                            <TableCell>Lock ID</TableCell>
-                            <TableCell>Battery</TableCell>
-                            <TableCell>Actions</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {locks.map(lock => (
-                            <TableRow key={lock.lockId}>
-                                <TableCell component="th" scope="row">
-                                    {lock.lockAlias || lock.lockName}
-                                </TableCell>
-                                <TableCell>{lock.lockId}</TableCell>
-                                <TableCell>{lock.electricQuantity}%</TableCell>
-                                <TableCell>
-                                    <Link to={`/lock/${lock.lockId}`} style={{ textDecoration: 'none' }}>
-                                        <Button variant="outlined">Details</Button>
-                                    </Link>
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+            
+            {Object.keys(groupedLocks).map(floor => (
+                <Box key={floor} sx={{ mb: 4 }}>
+                    <Typography variant="h5" gutterBottom sx={{ color: 'primary.main', borderBottom: '2px solid', borderColor: 'primary.light', pb: 1 }}>
+                        {floor === 'Floor 1' ? 'الدور الأول (100)' : 
+                         floor === 'Floor 2' ? 'الدور الثاني (200)' : 
+                         floor === 'Floor 3' ? 'الدور الثالث (300)' : 
+                         floor === 'Floor 4' ? 'الدور الرابع (400)' : 
+                         floor === 'Floor 5' ? 'الدور الخامس (500)' : 'أخرى'}
+                    </Typography>
+                    <TableContainer component={Paper}>
+                        <Table sx={{ minWidth: 650 }} aria-label="simple table">
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell>Lock Name (الغرفة)</TableCell>
+                                    <TableCell>Lock ID</TableCell>
+                                    <TableCell>Battery</TableCell>
+                                    <TableCell>Actions</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {groupedLocks[floor].map(lock => (
+                                    <TableRow key={lock.lockId}>
+                                        <TableCell component="th" scope="row">
+                                            {lock.lockAlias || lock.lockName}
+                                        </TableCell>
+                                        <TableCell>{lock.lockId}</TableCell>
+                                        <TableCell>{lock.electricQuantity}%</TableCell>
+                                        <TableCell>
+                                            <Link to={`/lock/${lock.lockId}`} style={{ textDecoration: 'none' }}>
+                                                <Button variant="outlined">Details</Button>
+                                            </Link>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                </Box>
+            ))}
         </div>
     );
 }
