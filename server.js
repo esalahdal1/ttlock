@@ -10,9 +10,7 @@ const CLIENT_SECRET = process.env.CLIENT_SECRET;
 
 app.use(express.json());
 
-// Serve static files from the React app
-app.use(express.static(path.join(__dirname, 'dist')));
-
+// API Routes
 app.post('/api/ttlock/token', async (req, res) => {
     const { code, redirectUri } = req.body;
 
@@ -341,10 +339,15 @@ app.post('/api/ttlock/ekey/delete', async (req, res) => {
     }
 });
 
-// Specific route for TTLock callback to pass the test
-app.get('/auth/ttlock/callback', (req, res) => {
+// Handle TTLock callback (GET and POST)
+app.all('/auth/ttlock/callback', (req, res) => {
+    // If it's a browser request (likely GET), send index.html
+    // If it's a validation request, index.html is also fine as it returns 200 OK
     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
+
+// Serve static files from the React app
+app.use(express.static(path.join(__dirname, 'dist')));
 
 // The "catchall" handler: for any request that doesn't
 // match one above, send back React's index.html file.
