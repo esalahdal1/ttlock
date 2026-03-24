@@ -8,15 +8,24 @@ const port = process.env.PORT || 3001;
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
 
+console.log('--- Server Config ---');
+console.log('PORT:', port);
+console.log('CLIENT_ID loaded:', CLIENT_ID ? 'Yes' : 'No');
+console.log('CLIENT_SECRET loaded:', CLIENT_SECRET ? 'Yes' : 'No');
+console.log('---------------------');
+
 app.use(express.json());
 
 // API Routes
 const crypto = require('crypto');
 
 app.post('/api/ttlock/token-direct', async (req, res) => {
+    console.log('--- Incoming Login Request ---');
     const { username, password } = req.body;
+    console.log('Username:', username);
 
     if (!username || !password) {
+        console.warn('Missing username or password');
         return res.status(400).json({ error: 'Username and password are required' });
     }
 
@@ -25,6 +34,7 @@ app.post('/api/ttlock/token-direct', async (req, res) => {
         console.error('CRITICAL ERROR: CLIENT_ID or CLIENT_SECRET is missing in environment variables!');
         return res.status(500).json({ error: 'Server configuration error: Missing API credentials in Render settings.' });
     }
+    console.log('CLIENT_ID found:', CLIENT_ID.substring(0, 5) + '...');
 
     try {
         const md5Password = crypto.createHash('md5').update(password).digest('hex');
@@ -36,35 +46,39 @@ app.post('/api/ttlock/token-direct', async (req, res) => {
         params.append('password', md5Password);
         params.append('date', Date.now());
 
-        console.log(`Attempting TTLock login for user: ${username} using client: ${CLIENT_ID}`);
+        console.log(`Attempting TTLock login via global api.ttlock.com...`);
 
-        // We try the European endpoint first, as per user's requirement
-        const response = await axios.post('https://euopen.ttlock.com/oauth2/token', params, {
+        // OAuth operations (token) are usually on the global API endpoint
+        const response = await axios.post('https://api.ttlock.com/oauth2/token', params, {
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            timeout: 10000 // 10 seconds timeout
+            timeout: 15000 
         });
 
-        console.log('TTLock Response Status:', response.status);
-        console.log('TTLock Response Data:', JSON.stringify(response.data));
-
+        console.log('TTLock Response errcode:', response.data.errcode);
+        
         if (response.data.errcode && response.data.errcode !== 0) {
+            console.error('TTLock Error Data:', response.data);
             return res.status(400).json({ 
                 error: `TTLock Error (${response.data.errcode}): ${response.data.description || response.data.errmsg}` 
             });
         }
 
         if (!response.data.access_token) {
+            console.error('No access token in response');
             return res.status(400).json({ error: 'TTLock did not return an access token. Please check your credentials.' });
         }
 
+        console.log('Login successful, token received');
         res.json(response.data);
     } catch (error) {
         console.error('Detailed Connection Error:', error.message);
         if (error.response) {
+            console.error('Error Response Status:', error.response.status);
             console.error('Error Response Data:', error.response.data);
             const msg = error.response.data.description || error.response.data.errmsg || error.message;
             res.status(error.response.status || 500).json({ error: `TTLock Server Error: ${msg}` });
         } else if (error.request) {
+            console.error('No response received from TTLock server');
             res.status(504).json({ error: 'TTLock server did not respond. Please try again in a moment.' });
         } else {
             res.status(500).json({ error: `Request Error: ${error.message}` });
@@ -74,6 +88,8 @@ app.post('/api/ttlock/token-direct', async (req, res) => {
 
 app.get('/api/ttlock/locks', async (req, res) => {
     const { accessToken } = req.query;
+    console.log('--- Fetching Locks ---');
+    console.log('Using Access Token:', accessToken ? 'Yes (provided)' : 'No');
 
     if (!accessToken) {
         return res.status(400).json({ error: 'Access token is missing' });
@@ -85,15 +101,22 @@ app.get('/api/ttlock/locks', async (req, res) => {
                 clientId: CLIENT_ID,
                 accessToken: accessToken,
                 pageNo: 1,
-                pageSize: 20,
+                pageSize: 100, // Increased to get more locks
                 date: Date.now()
             }
         });
 
+        console.log('TTLock Locks Response errcode:', response.data.errcode);
+        
+        if (response.data.errcode && response.data.errcode !== 0) {
+            console.error('TTLock Locks Error:', response.data);
+            return res.status(400).json({ error: response.data.description || response.data.errmsg });
+        }
+
         res.json(response.data);
     } catch (error) {
         console.error('Error fetching locks:', error.response ? error.response.data : error.message);
-        res.status(500).json({ error: 'Failed to fetch locks' });
+        res.status(500).json({ error: 'Failed to fetch locks from TTLock server.' });
     }
 });
 
