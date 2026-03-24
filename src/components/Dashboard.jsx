@@ -9,7 +9,7 @@ function Dashboard({ user, accessToken }) {
 
     const handleConnect = () => {
         const clientId = '9b89ac680b7f4a3990c721a27f5941d8'; // This is public anyway, but good to be consistent
-        const redirectUri = `${window.location.origin}/auth/ttlock/callback`;
+        const redirectUri = encodeURIComponent(`${window.location.origin}/auth/ttlock/callback`);
         const authUrl = `https://euopen.ttlock.com/oauth2/authorize?client_id=${clientId}&response_type=code&redirect_uri=${redirectUri}`;
         window.location.href = authUrl;
     };
